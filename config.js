@@ -9,4 +9,4 @@ window.FIREBASE_CONFIG = {
 };
 
 // Login da equipe: mude para true depois de ativar "E-mail/senha" no Firebase Authentication e publicar firestore.rules
-window.AUTH_ON = false;
+window.AUTH_ON = true;
