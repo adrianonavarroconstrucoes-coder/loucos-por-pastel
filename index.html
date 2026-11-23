@@ -310,7 +310,7 @@ function renderTop(){
 }
 function softRender(){const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='SELECT')&&a.closest('#app,#layer')&&(a.dataset.keep!==undefined||a.dataset.ed!==undefined)){dirty=true;return}render()}
 function render(){
- dirty=false;st.cart=st.cart.filter(c=>ITEM[c.id]);renderTop();
+ dirty=false;st.cart=st.cart.filter(c=>ITEM[c.id]);if(st.role==='admin'&&!isAdmin())st.role=null;renderTop();
  const app=$('#app');let foot='';
  if(AUTH.on&&!AUTH.user)app.innerHTML=AUTH.ready?vLogin():'<p class="mut">Carregando…</p>';
  else if(!st.role)app.innerHTML=vInicio();
@@ -491,7 +491,7 @@ function periodo(per,ref){const d=pdate(ref);
 }
 function mover(per,ref,dir){const d=pdate(ref);if(per==='dia')d.setDate(d.getDate()+dir);else if(per==='semana')d.setDate(d.getDate()+7*dir);else{d.setDate(1);d.setMonth(d.getMonth()+dir)}return ymd(d)}
 async function carregarBal(){
- const B=st.bal;if(!B.ref)B.ref=hoje();const{a,b}=periodo(B.per,B.ref),key=a+'|'+b;if(B.key===key&&B.rows)return;B.key=key;B.rows=null;B.err=null;
+ const B=st.bal;if(!B.ref)B.ref=hoje();const{a,b}=periodo(B.per,B.ref),key=a+'|'+b;if(B.key===key&&B.rows&&Date.now()-(B.at||0)<30000)return;const novo=B.key!==key;B.key=key;B.at=Date.now();if(novo){B.rows=null;B.err=null}
  try{let rows;
   if(D.mode==='remote'){const s=await D.db.collection('fechamentos').where('dia','>=',a).where('dia','<=',b).get();rows=s.docs.filter(d=>d.exists).map(d=>d.data())}
   else rows=Object.values(D.data.fechamentos).filter(f=>f.dia>=a&&f.dia<=b);
