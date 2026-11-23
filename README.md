@@ -3,7 +3,8 @@
 App de cardápio e comanda (garçom + cozinha) do Loucos por Pastel Trailer.
 
 ## Arquivos
-- `index.html`: o app completo (cardápio, logo e fotos já embutidos)
+- `index.html`: o app completo (garçom, cozinha e administrador)
+- `img.js`: logo e fotos do cardápio
 - `config.js`: configuração do Firebase (banco de dados em tempo real)
 - `firestore.rules`: regras do banco para colar no Firebase
 
