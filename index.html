@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f7b500">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Loucos por Pastel">
 <title>Loucos por Pastel · Comanda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -718,6 +724,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&st.sheet){st.sheet=
 setInterval(()=>{if(st.role==='cozinha'&&!st.sheet)softRender()},30000);
 
 render();
+try{if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
 (async()=>{let db=null;const cfg=window.FIREBASE_CONFIG;if(cfg&&cfg.apiKey&&window.firebase){try{firebase.initializeApp(cfg);db=firebase.firestore();try{db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}}catch(e){db=null}}
  if(db&&window.AUTH_ON&&firebase.auth){AUTH.on=true;let uidAtual;
   firebase.auth().onAuthStateChanged(u=>{const antes=uidAtual;uidAtual=u?u.uid:null;AUTH.user=u;AUTH.ready=true;
