@@ -7,3 +7,6 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "612629523590",
   appId: "1:612629523590:web:f2fe4ee971911f4e18f507"
 };
+
+// Login da equipe: mude para true depois de ativar "E-mail/senha" no Firebase Authentication e publicar firestore.rules
+window.AUTH_ON = false;

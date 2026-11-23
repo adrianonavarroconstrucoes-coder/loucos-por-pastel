@@ -57,7 +57,7 @@ h2{font-size:26px}
 .role span{font-size:14px;color:#d9cfc4}
 .role svg{width:38px;height:38px}
 .field{display:flex;flex-direction:column;gap:4px;margin-top:18px;font-weight:600}
-input[type=text],input[type=search],input[type=number]{height:48px;border-radius:12px;border:2px solid var(--line);background:var(--card);padding:0 14px;font-size:16px;width:100%}
+input[type=text],input[type=search],input[type=number],input[type=password]{height:48px;border-radius:12px;border:2px solid var(--line);background:var(--card);padding:0 14px;font-size:16px;width:100%}
 .contact{margin-top:26px;text-align:center;font-size:15px;color:var(--mut)}
 .contact b{color:var(--ink)}
 /* mesas */
@@ -203,6 +203,7 @@ input.bad{border-color:var(--red)!important}
 <script src="img.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
 <header class="top" id="top"></header>
@@ -311,7 +312,9 @@ function softRender(){const a=document.activeElement;if(a&&(a.tagName==='INPUT'|
 function render(){
  dirty=false;st.cart=st.cart.filter(c=>ITEM[c.id]);renderTop();
  const app=$('#app');let foot='';
- if(!st.role)app.innerHTML=vInicio();
+ if(AUTH.on&&!AUTH.user)app.innerHTML=AUTH.ready?vLogin():'<p class="mut">Carregando…</p>';
+ else if(!st.role)app.innerHTML=vInicio();
+ else if(st.role==='admin'&&!isAdmin()){st.role=null;app.innerHTML=vInicio()}
  else if(st.role==='admin'){app.innerHTML=vAdmin();foot=st.aview==='menu'?`<div class="actions"><button class="btn o" data-a="mdesc" style="flex:.45;color:#fff;border-color:#4a403a;background:transparent" ${st.draftDirty?'':'disabled'}>Descartar</button><button class="btn p" data-a="msalvar" id="msalvar" ${st.draftDirty?'':'disabled'}>Salvar cardápio</button></div>`:''}
  else if(st.role==='cozinha')app.innerHTML=vCozinha();
  else if(st.view==='mesas')app.innerHTML=vMesas();
@@ -329,9 +332,10 @@ const svgC='<svg viewBox="0 0 40 40" fill="none" stroke="#f7b500" stroke-width="
 function vInicio(){return`<section class="hero"><img src="${IMG.logo}" alt="Onça mordendo um pastel, logo do Loucos por Pastel Trailer"><h1>LOUCOS POR PASTEL</h1><div class="brush k">Crocante por fora, terapia por dentro!</div></section>
  <div class="roles"><button class="role" data-a="role" data-v="garcom">${svgG}<div><b>Garçom</b><br><span>Anota mesas, envia à cozinha e fecha a conta</span></div></button>
  <button class="role" data-a="role" data-v="cozinha">${svgC}<div><b>Cozinha</b><br><span>Recebe os pedidos e avisa quando sai</span></div></button></div>
- <button class="role" data-a="admin" style="width:100%;min-height:0;margin-top:12px;flex-direction:row;align-items:center;gap:14px;box-shadow:0 5px 0 var(--y)">${svgA}<div><b style="font-size:24px">Administrador</b><br><span>Cardápio, preços e balanço de vendas (com PIN)</span></div></button>
+ <button class="role" data-a="admin" style="width:100%;min-height:0;margin-top:12px;flex-direction:row;align-items:center;gap:14px;box-shadow:0 5px 0 var(--y)">${svgA}<div><b style="font-size:24px">Administrador</b><br><span>Cardápio, preços e balanço de vendas</span></div></button>
  <label class="field">Seu nome (opcional, aparece na cozinha)<input type="text" id="nome" data-keep value="${esc(st.nome)}" placeholder="Ex.: João" maxlength="20" autocomplete="off"></label>
  ${D.mode==='local'?'<p class="note">Os dados estão sendo salvos só neste aparelho. O banco de dados online ainda não foi configurado (arquivo config.js).</p>':''}
+ ${AUTH.on?'<button class="btn o w" data-a="sairconta" style="margin-top:18px">Sair da conta neste aparelho</button>':''}
  <p class="contact">WhatsApp <b>(14) 9 9155-8179</b> · Instagram <b>@loucosporpastel_trailer</b></p>`}
 
 function vMesas(){
@@ -427,6 +431,7 @@ function renderSheet(){
   <div class="tot big"><span>Total</span><span class="money">${brl(v)}</span></div>
   <p class="note">Bebidas não vão para a tela da cozinha; o garçom leva direto.</p>
   <button class="btn p w" data-a="enviar" style="margin-top:10px">Enviar para a cozinha</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Continuar escolhendo</button>`}
+ if(AUTH.on&&['setup','alogin','pwtroca'].includes(s.t))h=authSheet(s);
  if(s.t==='pin')h=`<h2>${s.modo==='entrar'?'Área do administrador':s.modo==='trocar'?'Novo PIN':'Criar PIN do administrador'}</h2>${s.modo==='criar'?'<p class="mut">Primeiro acesso: escolha um PIN de 4 a 8 números. Ele será pedido sempre que entrar aqui.</p>':''}<label class="field">${s.modo==='entrar'?'PIN':'Novo PIN'}<input type="password" inputmode="numeric" id="pin1" data-keep maxlength="8" autocomplete="off"></label>${s.modo!=='entrar'?'<label class="field">Repita o PIN<input type="password" inputmode="numeric" id="pin2" data-keep maxlength="8" autocomplete="off"></label>':''}<button class="btn p w" data-a="pinok" style="margin-top:14px">${s.modo==='entrar'?'Entrar':'Salvar PIN'}</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  if(s.t==='confirm')h=`<h2>${esc(s.title)}</h2><p>${esc(s.msg)}</p><button class="btn p w" data-a="sim">${esc(s.ok||'Confirmar')}</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  if(s.t==='avulsa')h=`<h2>Balcão / viagem</h2><label class="field">Nome da comanda<input type="text" id="avn" data-keep maxlength="24" placeholder="Ex.: Balcão, Viagem Maria" autocomplete="off"></label><button class="btn p w" data-a="avok" style="margin-top:14px">Abrir</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
@@ -557,11 +562,13 @@ async function salvarMenu(){
  const json=JSON.stringify(M);if(json.length>900000)return toast('Cardápio grande demais.');
  await put('mesas',CFG_MENU,{json,em:Date.now()});st.draftDirty=false;st.draft=null;toast('Cardápio salvo e já disponível para os garçons.');render();
 }
-function vAjustes(){return`<div class="card"><b>PIN do administrador</b><p class="note">Troque o PIN que protege esta área.</p><button class="btn k w" data-a="pintrocar">Trocar PIN</button></div>
+function vAjustes(){if(AUTH.on)return`<div class="card"><b>Senhas</b><p class="note">Equipe: usada por garçons e cozinha. Administrador: só você.</p><button class="btn k w" data-a="pwtroca" data-v="equipe">Trocar senha da equipe</button><button class="btn k w" data-a="pwtroca" data-v="admin" style="margin-top:8px">Trocar senha do administrador</button></div>
+ <div class="card"><b>Cardápio original</b><p class="note">Volta todos os produtos e preços para o cardápio das artes enviadas.</p><button class="btn o w" data-a="mreset">Restaurar cardápio original</button></div>
+ <div class="card"><b>Sair da conta</b><p class="note">Desconecta este aparelho. Use se o celular for de outra pessoa.</p><button class="btn p w" data-a="sairconta">Sair da conta neste aparelho</button></div>`;return`<div class="card"><b>PIN do administrador</b><p class="note">Troque o PIN que protege esta área.</p><button class="btn k w" data-a="pintrocar">Trocar PIN</button></div>
  <div class="card"><b>Cardápio original</b><p class="note">Volta todos os produtos e preços para o cardápio das artes enviadas. Use só se quiser desfazer todas as edições.</p><button class="btn o w" data-a="mreset">Restaurar cardápio original</button></div>
  <p class="note">O PIN evita uso acidental por quem tem o link, mas não é uma senha forte de segurança.</p>`}
 const ADM={
- admin:()=>{st.sheet={t:'pin',modo:D.data.mesas[CFG_ADM]?'entrar':'criar'};renderSheet();setTimeout(()=>$('#pin1')?.focus(),60)},
+ admin:()=>{if(AUTH.on){if(isAdmin()){st.role='admin';st.aview='bal';render()}else{st.sheet={t:'alogin'};renderSheet();setTimeout(()=>$('#asenha')?.focus(),60)}return}st.sheet={t:'pin',modo:D.data.mesas[CFG_ADM]?'entrar':'criar'};renderSheet();setTimeout(()=>$('#pin1')?.focus(),60)},
  pinok:async()=>{const s=st.sheet,p1=($('#pin1')?.value||'').trim(),p2=($('#pin2')?.value||'').trim();
   if(!/^\d{4,8}$/.test(p1))return toast('O PIN deve ter de 4 a 8 números.');
   if(s.modo!=='entrar'){if(p1!==p2)return toast('Os dois PINs não são iguais.');await put('mesas',CFG_ADM,{h:await sha(p1),em:Date.now()});toast('PIN salvo.')}
@@ -582,6 +589,47 @@ const ADM={
  mdesc:()=>{st.draft=null;st.draftDirty=false;render()},
  mreset:()=>confirmar('Restaurar o cardápio original?','Todos os produtos e preços voltam ao das artes. Os pedidos e o balanço não mudam.','Restaurar',async()=>{await del('mesas',CFG_MENU);st.draft=null;st.draftDirty=false;toast('Cardápio original restaurado.')}),
 };
+/* ---------- login (Firebase Authentication) ---------- */
+const EM={equipe:'equipe@loucos-por-pastel.app',admin:'admin@loucos-por-pastel.app'};
+const AUTH={on:false,user:null,ready:false};
+const isAdmin=()=>AUTH.on?(AUTH.user&&AUTH.user.email===EM.admin):st.admin;
+const authErr=e=>{const c=(e&&e.code)||'';return /wrong-password|invalid-credential|invalid-login|user-not-found/.test(c)?'Senha incorreta.':c.includes('operation-not-allowed')||c.includes('configuration-not-found')?'O login ainda não foi ativado no Firebase.':c.includes('email-already-in-use')?'As senhas já foram criadas. Use Entrar.':c.includes('too-many-requests')?'Muitas tentativas. Aguarde alguns minutos.':c.includes('network')?'Sem internet.':c.includes('weak-password')?'A senha precisa de pelo menos 6 caracteres.':'Não foi possível entrar ('+c+').'};
+function aux(){try{return firebase.app('aux')}catch(e){return firebase.initializeApp(window.FIREBASE_CONFIG,'aux')}}
+function vLogin(){
+ const t=st.lt||'equipe';
+ return`<section class="hero"><img src="${IMG.logo}" alt="Logo Loucos por Pastel Trailer"><h1>LOUCOS POR PASTEL</h1><div class="brush k">Acesso da equipe</div></section>
+ <div class="seg" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-top:28px">${[['equipe','Equipe (garçom e cozinha)'],['admin','Administrador']].map(([v,l])=>`<button class="${t===v?'on':''}" data-a="lt" data-v="${v}">${l}</button>`).join('')}</div>
+ <label class="field">Senha ${t==='admin'?'do administrador':'da equipe'}<input type="password" id="lsenha" data-keep autocomplete="current-password"></label>
+ <button class="btn p w" data-a="login" style="margin-top:14px">Entrar</button>
+ <p class="note">Este aparelho fica conectado até alguém tocar em Sair.</p>
+ <button class="btn o w" data-a="setup" style="margin-top:22px">Primeiro acesso: criar as senhas</button>
+ <p class="contact">WhatsApp <b>(14) 9 9155-8179</b> · Instagram <b>@loucosporpastel_trailer</b></p>`;
+}
+function pw(id,l){return`<label class="field">${l}<input type="password" id="${id}" data-keep autocomplete="new-password"></label>`}
+function authSheet(s){
+ if(s.t==='setup')return`<h2>Criar as senhas</h2><p class="mut">Feito uma única vez, pelo dono. Mínimo de 6 caracteres.</p>${pw('sa1','Senha do administrador')}${pw('sa2','Repita a senha do administrador')}${pw('se1','Senha da equipe (garçom e cozinha)')}${pw('se2','Repita a senha da equipe')}<button class="btn p w" data-a="setupok" style="margin-top:14px">Criar senhas</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
+ if(s.t==='alogin')return`<h2>Área do administrador</h2>${pw('asenha','Senha do administrador')}<button class="btn p w" data-a="aloginok" style="margin-top:14px">Entrar</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
+ if(s.t==='pwtroca')return`<h2>Trocar senha ${s.quem==='admin'?'do administrador':'da equipe'}</h2>${pw('pa','Senha atual '+(s.quem==='admin'?'do administrador':'da equipe'))}${pw('pn1','Nova senha')}${pw('pn2','Repita a nova senha')}<button class="btn p w" data-a="pwok" style="margin-top:14px">Salvar nova senha</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
+ return'';
+}
+const vv=id=>($('#'+id)?.value||'');
+Object.assign(ADM,{
+ lt:(b,v)=>{st.lt=v;render();setTimeout(()=>$('#lsenha')?.focus(),50)},
+ login:async b=>{const p=vv('lsenha');if(!p)return toast('Digite a senha.');b.disabled=true;
+  try{await firebase.auth().signInWithEmailAndPassword(EM[st.lt||'equipe'],p);unlock();if((st.lt||'equipe')==='admin'){st.role='admin';st.aview='bal'}}catch(e){toast(authErr(e));b.disabled=false}},
+ setup:()=>{st.sheet={t:'setup'};renderSheet()},
+ setupok:async b=>{const a1=vv('sa1'),a2=vv('sa2'),e1=vv('se1'),e2=vv('se2');
+  if(a1.length<6||e1.length<6)return toast('As senhas precisam de pelo menos 6 caracteres.');if(a1!==a2||e1!==e2)return toast('As senhas repetidas não conferem.');if(a1===e1)return toast('Use senhas diferentes para administrador e equipe.');
+  b.disabled=true;const A=aux().auth();
+  try{await A.createUserWithEmailAndPassword(EM.admin,a1);await A.signOut();await A.createUserWithEmailAndPassword(EM.equipe,e1);await A.signOut();
+   await firebase.auth().signInWithEmailAndPassword(EM.admin,a1);st.sheet=null;st.role='admin';st.aview='bal';toast('Senhas criadas. Guarde-as em lugar seguro.')}catch(e){try{await A.signOut()}catch(x){}toast(authErr(e));b.disabled=false}},
+ aloginok:async b=>{const p=vv('asenha');if(!p)return;b.disabled=true;try{await firebase.auth().signInWithEmailAndPassword(EM.admin,p);st.sheet=null;st.role='admin';st.aview='bal';unlock();render()}catch(e){toast(authErr(e));b.disabled=false}},
+ pwtroca:(b,v)=>{st.sheet={t:'pwtroca',quem:v};renderSheet()},
+ pwok:async b=>{const s=st.sheet,a=vv('pa'),n1=vv('pn1'),n2=vv('pn2');if(n1.length<6)return toast('A nova senha precisa de pelo menos 6 caracteres.');if(n1!==n2)return toast('As novas senhas não conferem.');
+  b.disabled=true;const A=aux().auth();
+  try{const c=await A.signInWithEmailAndPassword(EM[s.quem],a);await c.user.updatePassword(n1);await A.signOut();st.sheet=null;renderSheet();toast('Senha trocada.')}catch(e){try{await A.signOut()}catch(x){}toast(authErr(e));b.disabled=false}},
+ sairconta:()=>confirmar('Sair da conta neste aparelho?','Para usar de novo será preciso digitar a senha.','Sair',async()=>{await firebase.auth().signOut()}),
+});
 document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
  const a=b.dataset.a,v=b.dataset.v,C=st.conta;
@@ -643,11 +691,16 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.id==='nome'){st.nome=t.value.trim();LS.set('nome',st.nome)}
 });
 document.addEventListener('focusout',()=>setTimeout(()=>{if(dirty&&!(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.keep!==undefined))render()},0));
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&st.sheet){st.sheet=null;renderSheet()}if(e.key==='Enter'&&(e.target.id==='pin1'||e.target.id==='pin2'))document.querySelector('[data-a="pinok"]')?.click();if(e.key==='Enter'&&e.target.id==='avn')document.querySelector('[data-a="avok"]')?.click()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&st.sheet){st.sheet=null;renderSheet()}if(e.key==='Enter'&&e.target.id==='lsenha')document.querySelector('[data-a="login"]')?.click();if(e.key==='Enter'&&e.target.id==='asenha')document.querySelector('[data-a="aloginok"]')?.click();if(e.key==='Enter'&&(e.target.id==='pin1'||e.target.id==='pin2'))document.querySelector('[data-a="pinok"]')?.click();if(e.key==='Enter'&&e.target.id==='avn')document.querySelector('[data-a="avok"]')?.click()});
 setInterval(()=>{if(st.role==='cozinha'&&!st.sheet)softRender()},30000);
 
 render();
 (async()=>{let db=null;const cfg=window.FIREBASE_CONFIG;if(cfg&&cfg.apiKey&&window.firebase){try{firebase.initializeApp(cfg);db=firebase.firestore();try{db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}}catch(e){db=null}}
+ if(db&&window.AUTH_ON&&firebase.auth){AUTH.on=true;let uidAtual;
+  firebase.auth().onAuthStateChanged(u=>{const antes=uidAtual;uidAtual=u?u.uid:null;AUTH.user=u;AUTH.ready=true;
+   if(!u&&antes){location.reload();return}
+   if(u&&D.mode!=='remote')startRemote(db);render()});
+  render();return}
  if(!db){try{if(window.claude&&claude.use)db=await claude.use('db')}catch(e){}}if(db)startRemote(db);else startLocal()})();
 }
 </script>
