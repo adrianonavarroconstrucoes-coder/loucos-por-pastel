@@ -568,12 +568,12 @@ function vAjustes(){if(AUTH.on)return`<div class="card"><b>Senhas</b><p class="n
  <div class="card"><b>Cardápio original</b><p class="note">Volta todos os produtos e preços para o cardápio das artes enviadas. Use só se quiser desfazer todas as edições.</p><button class="btn o w" data-a="mreset">Restaurar cardápio original</button></div>
  <p class="note">O PIN evita uso acidental por quem tem o link, mas não é uma senha forte de segurança.</p>`}
 const ADM={
- admin:()=>{if(AUTH.on){if(isAdmin()){st.role='admin';st.aview='bal';render()}else{st.sheet={t:'alogin'};renderSheet();setTimeout(()=>$('#asenha')?.focus(),60)}return}st.sheet={t:'pin',modo:D.data.mesas[CFG_ADM]?'entrar':'criar'};renderSheet();setTimeout(()=>$('#pin1')?.focus(),60)},
+ admin:()=>{if(AUTH.on){if(isAdmin()){st.role='admin';st.aview='bal';st.bal.key=null;render()}else{st.sheet={t:'alogin'};renderSheet();setTimeout(()=>$('#asenha')?.focus(),60)}return}st.sheet={t:'pin',modo:D.data.mesas[CFG_ADM]?'entrar':'criar'};renderSheet();setTimeout(()=>$('#pin1')?.focus(),60)},
  pinok:async()=>{const s=st.sheet,p1=($('#pin1')?.value||'').trim(),p2=($('#pin2')?.value||'').trim();
   if(!/^\d{4,8}$/.test(p1))return toast('O PIN deve ter de 4 a 8 números.');
   if(s.modo!=='entrar'){if(p1!==p2)return toast('Os dois PINs não são iguais.');await put('mesas',CFG_ADM,{h:await sha(p1),em:Date.now()});toast('PIN salvo.')}
   else if((await sha(p1))!==D.data.mesas[CFG_ADM].h)return toast('PIN incorreto.');
-  st.sheet=null;st.role='admin';st.admin=true;st.aview=st.aview||'bal';unlock();render();window.scrollTo(0,0)},
+  st.sheet=null;st.role='admin';st.admin=true;st.aview=st.aview||'bal';st.bal.key=null;unlock();render();window.scrollTo(0,0)},
  pintrocar:()=>{st.sheet={t:'pin',modo:'trocar'};renderSheet();setTimeout(()=>$('#pin1')?.focus(),60)},
  aview:(b,v)=>{if(st.aview==='menu'&&st.draftDirty&&v!=='menu'){confirmar('Sair sem salvar?','As mudanças no cardápio serão perdidas.','Sair',()=>{st.draft=null;st.draftDirty=false;st.aview=v;render()});return}st.aview=v;if(v==='bal')st.bal.key=null;render();window.scrollTo(0,0)},
  bper:(b,v)=>{st.bal.per=v;render()},
@@ -616,14 +616,14 @@ const vv=id=>($('#'+id)?.value||'');
 Object.assign(ADM,{
  lt:(b,v)=>{st.lt=v;render();setTimeout(()=>$('#lsenha')?.focus(),50)},
  login:async b=>{const p=vv('lsenha');if(!p)return toast('Digite a senha.');b.disabled=true;
-  try{await firebase.auth().signInWithEmailAndPassword(EM[st.lt||'equipe'],p);unlock();if((st.lt||'equipe')==='admin'){st.role='admin';st.aview='bal'}}catch(e){toast(authErr(e));b.disabled=false}},
+  try{await firebase.auth().signInWithEmailAndPassword(EM[st.lt||'equipe'],p);unlock();if((st.lt||'equipe')==='admin'){st.role='admin';st.aview='bal';st.bal.key=null}}catch(e){toast(authErr(e));b.disabled=false}},
  setup:()=>{st.sheet={t:'setup'};renderSheet()},
  setupok:async b=>{const a1=vv('sa1'),a2=vv('sa2'),e1=vv('se1'),e2=vv('se2');
   if(a1.length<6||e1.length<6)return toast('As senhas precisam de pelo menos 6 caracteres.');if(a1!==a2||e1!==e2)return toast('As senhas repetidas não conferem.');if(a1===e1)return toast('Use senhas diferentes para administrador e equipe.');
   b.disabled=true;const A=aux().auth();
   try{await A.createUserWithEmailAndPassword(EM.admin,a1);await A.signOut();await A.createUserWithEmailAndPassword(EM.equipe,e1);await A.signOut();
-   await firebase.auth().signInWithEmailAndPassword(EM.admin,a1);st.sheet=null;st.role='admin';st.aview='bal';toast('Senhas criadas. Guarde-as em lugar seguro.')}catch(e){try{await A.signOut()}catch(x){}toast(authErr(e));b.disabled=false}},
- aloginok:async b=>{const p=vv('asenha');if(!p)return;b.disabled=true;try{await firebase.auth().signInWithEmailAndPassword(EM.admin,p);st.sheet=null;st.role='admin';st.aview='bal';unlock();render()}catch(e){toast(authErr(e));b.disabled=false}},
+   await firebase.auth().signInWithEmailAndPassword(EM.admin,a1);st.sheet=null;st.role='admin';st.aview='bal';st.bal.key=null;toast('Senhas criadas. Guarde-as em lugar seguro.')}catch(e){try{await A.signOut()}catch(x){}toast(authErr(e));b.disabled=false}},
+ aloginok:async b=>{const p=vv('asenha');if(!p)return;b.disabled=true;try{await firebase.auth().signInWithEmailAndPassword(EM.admin,p);st.sheet=null;st.role='admin';st.aview='bal';st.bal.key=null;unlock();render()}catch(e){toast(authErr(e));b.disabled=false}},
  pwtroca:(b,v)=>{st.sheet={t:'pwtroca',quem:v};renderSheet()},
  pwok:async b=>{const s=st.sheet,a=vv('pa'),n1=vv('pn1'),n2=vv('pn2');if(n1.length<6)return toast('A nova senha precisa de pelo menos 6 caracteres.');if(n1!==n2)return toast('As novas senhas não conferem.');
   b.disabled=true;const A=aux().auth();
