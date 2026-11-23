@@ -272,7 +272,7 @@ const put=(c,id,o)=>write(c,id,o),del=(c,id)=>write(c,id,null);
 /* ---------- estado da tela ---------- */
 const st={role:LS.get('role',null)==='admin'?null:LS.get('role',null),admin:false,draft:null,draftDirty:false,aview:'bal',bal:{per:'dia',ref:null,rows:null,key:null,err:null},nome:LS.get('nome',''),nm:LS.get('nm',12),view:'mesas',mesa:null,cart:[],cat:'trad',q:'',sheet:null,
  conta:{modo:'total',serv:false,sel:{},n:2,pagas:{},forma:'Dinheiro',rec:''}};
-let seenPed=null,seenPronto=null,dirty=false,actx=null;
+let seenPed=null,seenPronto=null,seenAtivos=null,dirty=false,actx=null;
 function beep(seq){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();let t=actx.currentTime;seq.forEach(f=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.type='square';g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.24);t+=.26})}catch(e){}try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}}
 function unlock(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume&&actx.resume()}catch(e){}}
 let tt=null;function toast(m){const l=document.createElement('div');l.className='toast';l.textContent=m;document.body.appendChild(l);clearTimeout(tt);document.querySelectorAll('.toast').forEach(x=>{if(x!==l)x.remove()});tt=setTimeout(()=>l.remove(),3500)}
@@ -283,7 +283,9 @@ function onData(){
  const novos=new Set(ps.filter(([,p])=>p.st==='novo').map(([k])=>k)),prontos=new Set(ps.filter(([,p])=>p.st==='pronto').map(([k])=>k));
  if(seenPed&&st.role==='cozinha'&&[...novos].some(k=>!seenPed.has(k))){beep([880,1175,880]);toast('Novo pedido chegou!')}
  if(seenPronto&&st.role==='garcom'&&[...prontos].some(k=>!seenPronto.has(k))){beep([660,990]);toast('Pedido pronto para servir!')}
- if(D.mode!=='wait'){seenPed=novos;seenPronto=prontos}
+ const ativos=new Map(ps.filter(([,p])=>p.st==='novo'||p.st==='preparo').map(([k,p])=>[k,p.mesa]));
+ if(seenAtivos&&st.role==='cozinha'){for(const[k,ms]of seenAtivos)if(!D.data.pedidos[k]){beep([440,330]);toast('Pedido cancelado: '+nomeMesa(ms))}}
+ if(D.mode!=='wait'){seenPed=novos;seenPronto=prontos;seenAtivos=ativos}
  softRender();
 }
 
@@ -358,10 +360,11 @@ const stLbl={novo:'Na fila',preparo:'Preparando',pronto:'Pronto',entregue:'Entre
 function vMesa(){
  const k=st.mesa,r=resumo(k),m=mesaDoc(k);
  let h=`<div class="bar"><button class="btn o" data-a="home">← Mesas</button><span class="mut">${m&&m.aberta?'Aberta às '+hm(m.desde):''}</span></div><h1>${esc(nomeMesa(k))}</h1>`;
- if(!r.peds.length)return h+`<div class="empty"><img src="${IMG.logo}" alt=""><p>Mesa livre. Toque em <b>+ Pedido</b> para começar.</p></div>`;
- h+=`<div class="card" style="margin-top:12px">${r.peds.map(([pid,p])=>`<div class="ped"><div class="ph"><span>${hm(p.em)}${p.garcom?' · '+esc(p.garcom):''}</span><span class="chip s-${p.st}">${stLbl[p.st]}</span></div>
+ if(!r.peds.length)return h+`<div class="empty"><img src="${IMG.logo}" alt=""><p>Mesa livre. Toque em <b>+ Pedido</b> para começar.</p></div>`+(m&&m.aberta?`<button class="btn o w" data-a="cancmesa">Liberar mesa</button>`:'');
+ h+=`<div class="card" style="margin-top:12px">${r.peds.map(([pid,p])=>`<div class="ped"><div class="ph"><span>${hm(p.em)}${p.garcom?' · '+esc(p.garcom):''}</span><span style="display:flex;gap:6px;align-items:center"><span class="chip s-${p.st}">${stLbl[p.st]}</span>${r.units.some(u=>u.pid===pid&&u.pago)?'':`<button class="chip" style="background:transparent;border:1px solid var(--line);color:var(--red);cursor:pointer;min-height:32px" data-a="cancped" data-k="${pid}">Cancelar</button>`}</span></div>
   ${p.itens.map((it,i)=>{const u=r.units.find(x=>x.pid===pid&&x.i===i);return`<div class="ln${u.rest?'':' paid'}"><span class="q">${it.q}×</span><span class="d">${esc(ITEM[it.id]?.n||it.n)}${it.o?`<small>${esc(it.o)}</small>`:''}${u.pago?`<small style="color:var(--ok)">${u.pago} pago${u.pago>1?'s':''}</small>`:''}</span><span class="money">${brl(it.p*it.q)}</span>${u.rest?`<button class="x" data-a="rmitem" data-k="${pid}" data-i="${i}" aria-label="Tirar um">×</button>`:'<span style="width:36px"></span>'}</div>`}).join('')}</div>`).join('')}</div>
- <div class="card"><div class="tot"><span>Consumo</span><span class="money">${brl(r.total)}</span></div>${r.pagoBase?`<div class="tot mut"><span>Já pago</span><span class="money">− ${brl(r.pagoBase)}</span></div>`:''}<div class="tot big"><span>A pagar</span><span class="money">${brl(r.resta)}</span></div><p class="note">Sem taxa de serviço. Os 10% podem ser incluídos no fechamento.</p></div>`;
+ <div class="card"><div class="tot"><span>Consumo</span><span class="money">${brl(r.total)}</span></div>${r.pagoBase?`<div class="tot mut"><span>Já pago</span><span class="money">− ${brl(r.pagoBase)}</span></div>`:''}<div class="tot big"><span>A pagar</span><span class="money">${brl(r.resta)}</span></div><p class="note">Sem taxa de serviço. Os 10% podem ser incluídos no fechamento.</p></div>
+ <button class="btn o w" data-a="cancmesa" style="color:var(--red)">Cancelar mesa (desistência)</button><p class="note">Use só se os clientes desistirem: apaga os pedidos desta mesa sem lançar venda.</p>`;
  return h;
 }
 function vCardapio(){
@@ -432,6 +435,7 @@ function renderSheet(){
   <p class="note">Bebidas não vão para a tela da cozinha; o garçom leva direto.</p>
   <button class="btn p w" data-a="enviar" style="margin-top:10px">Enviar para a cozinha</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Continuar escolhendo</button>`}
  if(AUTH.on&&['setup','alogin','pwtroca'].includes(s.t))h=authSheet(s);
+ if(s.t==='limpar')h=`<h2>Apagar todos os pedidos e vendas?</h2><p>Isso apaga de forma definitiva os pedidos, as mesas abertas, os pagamentos e todo o histórico do balanço. Não dá para desfazer.</p><label class="field">Digite APAGAR para confirmar<input type="text" id="lconf" data-keep autocomplete="off" autocapitalize="characters"></label><button class="btn p w" data-a="limparok" style="margin-top:14px">Apagar tudo</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  if(s.t==='pin')h=`<h2>${s.modo==='entrar'?'Área do administrador':s.modo==='trocar'?'Novo PIN':'Criar PIN do administrador'}</h2>${s.modo==='criar'?'<p class="mut">Primeiro acesso: escolha um PIN de 4 a 8 números. Ele será pedido sempre que entrar aqui.</p>':''}<label class="field">${s.modo==='entrar'?'PIN':'Novo PIN'}<input type="password" inputmode="numeric" id="pin1" data-keep maxlength="8" autocomplete="off"></label>${s.modo!=='entrar'?'<label class="field">Repita o PIN<input type="password" inputmode="numeric" id="pin2" data-keep maxlength="8" autocomplete="off"></label>':''}<button class="btn p w" data-a="pinok" style="margin-top:14px">${s.modo==='entrar'?'Entrar':'Salvar PIN'}</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  if(s.t==='confirm')h=`<h2>${esc(s.title)}</h2><p>${esc(s.msg)}</p><button class="btn p w" data-a="sim">${esc(s.ok||'Confirmar')}</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  if(s.t==='avulsa')h=`<h2>Balcão / viagem</h2><label class="field">Nome da comanda<input type="text" id="avn" data-keep maxlength="24" placeholder="Ex.: Balcão, Viagem Maria" autocomplete="off"></label><button class="btn p w" data-a="avok" style="margin-top:14px">Abrir</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
@@ -564,6 +568,7 @@ async function salvarMenu(){
 }
 function vAjustes(){if(AUTH.on)return`<div class="card"><b>Senhas</b><p class="note">Equipe: usada por garçons e cozinha. Administrador: só você.</p><button class="btn k w" data-a="pwtroca" data-v="equipe">Trocar senha da equipe</button><button class="btn k w" data-a="pwtroca" data-v="admin" style="margin-top:8px">Trocar senha do administrador</button></div>
  <div class="card"><b>Cardápio original</b><p class="note">Volta todos os produtos e preços para o cardápio das artes enviadas.</p><button class="btn o w" data-a="mreset">Restaurar cardápio original</button></div>
+ <div class="card"><b>Zerar o app</b><p class="note">Apaga todos os pedidos, mesas abertas, pagamentos e o histórico de vendas do balanço. O cardápio e as senhas continuam. Use para limpar testes.</p><button class="btn o w" data-a="limpartudo" style="color:var(--red)">Apagar todos os pedidos e vendas</button></div>
  <div class="card"><b>Sair da conta</b><p class="note">Desconecta este aparelho. Use se o celular for de outra pessoa.</p><button class="btn p w" data-a="sairconta">Sair da conta neste aparelho</button></div>`;return`<div class="card"><b>PIN do administrador</b><p class="note">Troque o PIN que protege esta área.</p><button class="btn k w" data-a="pintrocar">Trocar PIN</button></div>
  <div class="card"><b>Cardápio original</b><p class="note">Volta todos os produtos e preços para o cardápio das artes enviadas. Use só se quiser desfazer todas as edições.</p><button class="btn o w" data-a="mreset">Restaurar cardápio original</button></div>
  <p class="note">O PIN evita uso acidental por quem tem o link, mas não é uma senha forte de segurança.</p>`}
@@ -629,6 +634,24 @@ Object.assign(ADM,{
   b.disabled=true;const A=aux().auth();
   try{const c=await A.signInWithEmailAndPassword(EM[s.quem],a);await c.user.updatePassword(n1);await A.signOut();st.sheet=null;renderSheet();toast('Senha trocada.')}catch(e){try{await A.signOut()}catch(x){}toast(authErr(e));b.disabled=false}},
  sairconta:()=>confirmar('Sair da conta neste aparelho?','Para usar de novo será preciso digitar a senha.','Sair',async()=>{await firebase.auth().signOut()}),
+});
+/* ---------- cancelamentos e limpeza ---------- */
+async function apagarColecao(col,filtro){let n=0;
+ if(D.mode==='remote'){const s=await D.db.collection(col).get();for(const d of s.docs){if(!d.exists||(filtro&&!filtro(d.id)))continue;await D.db.collection(col).doc(d.id).delete();n++}}
+ else{for(const id of Object.keys(D.data[col]||{})){if(filtro&&!filtro(id))continue;delete D.data[col][id];n++}localSave();onData()}
+ return n}
+Object.assign(ADM,{
+ cancped:b=>{const pid=b.dataset.k,p=D.data.pedidos[pid];if(!p)return;
+  confirmar('Cancelar este pedido?','Os '+p.itens.reduce((s,i)=>s+i.q,0)+' itens saem da conta'+(p.cozinha&&(p.st==='novo'||p.st==='preparo')?' e da tela da cozinha.':'.'),'Cancelar pedido',async()=>{await del('pedidos',pid);toast('Pedido cancelado.')})},
+ cancmesa:()=>{const k=st.mesa,m=mesaDoc(k),r=resumo(k);
+  confirmar('Cancelar '+nomeMesa(k)+'?',(r.pags.length?'Os '+r.pags.length+' pagamentos já registrados também serão apagados. ':'')+'Todos os pedidos saem da conta e da cozinha, e a mesa fica livre. Nada entra no caixa.','Cancelar mesa',async()=>{
+   for(const[id]of r.peds)await del('pedidos',id);for(const[id]of r.pags)await del('pagamentos',id);
+   if(m)await put('mesas',k,{...m,aberta:false,fechada:Date.now(),cancelada:true});
+   st.view='mesas';st.mesa=null;st.conta.pagas[k]=0;toast(nomeMesa(k)+' cancelada e liberada.');render()})},
+ limpartudo:()=>{st.sheet={t:'limpar'};renderSheet();setTimeout(()=>$('#lconf')?.focus(),60)},
+ limparok:async b=>{if(($('#lconf')?.value||'').trim().toUpperCase()!=='APAGAR')return toast('Digite APAGAR para confirmar.');b.disabled=true;b.textContent='Apagando…';
+  try{const cfg=id=>id[0]!=='_';let n=0;n+=await apagarColecao('pedidos');n+=await apagarColecao('pagamentos');n+=await apagarColecao('fechamentos');n+=await apagarColecao('mesas',cfg);
+   st.sheet=null;st.bal.key=null;st.conta.pagas={};toast('Pronto: '+n+' registros apagados. O app está zerado.');render()}catch(e){toast('Não foi possível apagar tudo ('+(e&&e.code||'erro')+'). Tente de novo.');b.disabled=false;b.textContent='Apagar tudo'}},
 });
 document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;
