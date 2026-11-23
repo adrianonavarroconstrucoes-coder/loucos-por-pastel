@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Coleções usadas pela comanda. Acesso aberto nesta primeira versão (sem login).
+    // Próximo passo recomendado: PIN/login para garçom e cozinha antes de abrir para clientes.
+    match /{col}/{id} {
+      allow read: if col in ['pedidos','mesas','pagamentos','fechamentos'];
+      allow write: if col in ['pedidos','mesas','pagamentos','fechamentos']
+                   && (request.resource == null || request.resource.data.size() < 60);
+    }
+  }
+}
