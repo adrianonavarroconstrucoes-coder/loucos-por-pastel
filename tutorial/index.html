@@ -46,7 +46,7 @@ ol button.on{background:var(--k);color:#fff;border-color:var(--k)}ol button.on s
  <div class="bar"><i id="prog"></i></div>
  <div class="ctl"><button class="b" id="prev" aria-label="Cena anterior">⏮</button><button class="b main" id="play">▶ Iniciar narração</button><button class="b" id="next" aria-label="Próxima cena">⏭</button></div>
  <div class="opts"><label>Voz<select id="voz"><option>Carregando vozes…</option></select></label>
- <label>Velocidade<select id="vel"><option value="0.9">Devagar</option><option value="1" selected>Normal</option><option value="1.15">Rápida</option></select></label></div>
+ <label>Velocidade<select id="vel"><option value="0.9">Devagar</option><option value="1">Normal</option><option value="1.15" selected>Rápida</option></select></label></div>
  <div class="now" aria-live="polite"><b id="tit"></b><span id="txt"></span></div>
  <p class="note" id="aviso">Toque em Iniciar narração para ouvir.</p>
 </section>
@@ -64,7 +64,8 @@ function carregarVozes(){if(!S)return;const vs=S.getVoices();const pt=vs.filter(
  vozes=(pt.length?pt:vs).sort((a,b)=>(b.lang==='pt-BR')-(a.lang==='pt-BR'));
  const sel=$('voz'),atual=sel.value;sel.innerHTML=vozes.map((v,k)=>`<option value="${k}">${v.name.replace(/Microsoft |Google /,'')} (${v.lang})</option>`).join('')||'<option>Voz padrão</option>';
  if(atual&&sel.querySelector(`option[value="${atual}"]`))sel.value=atual;
- const pref=vozes.findIndex(v=>/pt-BR/i.test(v.lang)&&/(Francisca|Thalita|Luciana|Google)/i.test(v.name));if(!atual&&pref>=0)sel.value=pref;
+ const MASC=/(Daniel|Felipe|Antonio|Ant[oô]nio|Fabio|F[aá]bio|Ricardo|Rodrigo|Julio|J[uú]lio|Humberto|Donato|Valerio|Val[eé]rio|Nicolau|Leonardo|Macerio|male|masculin|ptd|pte)/i;
+ const pref=vozes.findIndex(v=>/^pt/i.test(v.lang)&&MASC.test(v.name+' '+(v.voiceURI||'')));if(!atual&&pref>=0)sel.value=pref;
  $('aviso').textContent=pt.length?'Narração pronta. Escolha a voz e toque em Iniciar.':'Este aparelho não tem voz em português instalada; será usada a voz disponível.'}
 if(S){carregarVozes();S.onvoiceschanged=carregarVozes}else $('aviso').textContent='Este navegador não tem narração por voz. As cenas avançam sozinhas com o texto.';
 function show(k){i=Math.max(0,Math.min(SC.length-1,k));const s=SC[i];$('img').src=s.f;$('img').alt=s.t+': '+s.x;$('tit').textContent=s.t;$('txt').textContent=s.x;
