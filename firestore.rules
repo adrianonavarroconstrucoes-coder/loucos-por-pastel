@@ -1,8 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function staff() { return request.auth != null && request.auth.token.email in ['equipe@loucos-por-pastel.app', 'admin@loucos-por-pastel.app']; }
-    function admin() { return request.auth != null && request.auth.token.email == 'admin@loucos-por-pastel.app'; }
+    function dono() { return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email in ['adriano.navarroconstrucoes@gmail.com']; }
+    function staff() { return dono() || (request.auth != null && request.auth.token.email in ['equipe@loucos-por-pastel.app', 'admin@loucos-por-pastel.app']); }
+    function admin() { return dono() || (request.auth != null && request.auth.token.email == 'admin@loucos-por-pastel.app'); }
     match /pedidos/{id} { allow read, write: if staff(); }
     match /pagamentos/{id} { allow read, write: if staff(); }
     match /mesas/{id} {

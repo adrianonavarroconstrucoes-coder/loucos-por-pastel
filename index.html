@@ -618,8 +618,9 @@ const ADM={
 };
 /* ---------- login (Firebase Authentication) ---------- */
 const EM={equipe:'equipe@loucos-por-pastel.app',admin:'admin@loucos-por-pastel.app'};
+const DONOS=['adriano.navarroconstrucoes@gmail.com'];/* entram com Google, sem senha, com acesso total */
 const AUTH={on:false,user:null,ready:false};
-const isAdmin=()=>AUTH.on?(AUTH.user&&AUTH.user.email===EM.admin):st.admin;
+const isAdmin=()=>AUTH.on?(AUTH.user&&(AUTH.user.email===EM.admin||DONOS.includes(String(AUTH.user.email).toLowerCase()))):st.admin;
 const authErr=e=>{const c=(e&&e.code)||'';return /wrong-password|invalid-credential|invalid-login|user-not-found/.test(c)?'Senha incorreta.':c.includes('operation-not-allowed')||c.includes('configuration-not-found')?'O login ainda não foi ativado no Firebase.':c.includes('email-already-in-use')?'As senhas já foram criadas. Use Entrar.':c.includes('too-many-requests')?'Muitas tentativas. Aguarde alguns minutos.':c.includes('network')?'Sem internet.':c.includes('weak-password')?'A senha precisa de pelo menos 6 caracteres.':'Não foi possível entrar ('+c+').'};
 function aux(){try{return firebase.app('aux')}catch(e){return firebase.initializeApp(window.FIREBASE_CONFIG,'aux')}}
 function vLogin(){
@@ -628,6 +629,7 @@ function vLogin(){
  <div class="seg" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-top:28px">${[['equipe','Equipe (garçom e cozinha)'],['admin','Administrador']].map(([v,l])=>`<button class="${t===v?'on':''}" data-a="lt" data-v="${v}">${l}</button>`).join('')}</div>
  <label class="field">Senha ${t==='admin'?'do administrador':'da equipe'}<input type="password" id="lsenha" data-keep autocomplete="current-password"></label>
  <button class="btn p w" data-a="login" style="margin-top:14px">Entrar</button>
+ <button class="btn o w" data-a="google" style="margin-top:10px;text-transform:none;letter-spacing:0"><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg> Entrar com Google (dono)</button>
  <p class="note">Este aparelho fica conectado até alguém tocar em Sair.</p>
  <button class="btn o w" data-a="setup" style="margin-top:22px">Primeiro acesso: criar as senhas</button>
  <p class="contact">WhatsApp <b>(14) 9 9155-8179</b> · Instagram <b>@loucosporpastel_trailer</b></p>`;
@@ -645,6 +647,13 @@ Object.assign(ADM,{
  login:async b=>{const p=vv('lsenha');if(!p)return toast('Digite a senha.');b.disabled=true;
   try{await firebase.auth().signInWithEmailAndPassword(EM[st.lt||'equipe'],p);unlock();if((st.lt||'equipe')==='admin'){st.role='admin';st.aview='bal';st.bal.key=null}}catch(e){toast(authErr(e));b.disabled=false}},
  setup:()=>{st.sheet={t:'setup'};renderSheet()},
+ google:async b=>{b.disabled=true;const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+  try{await firebase.auth().signInWithPopup(prov)}catch(e){const c=String(e&&e.code);
+   if(c.includes('popup-blocked')||c.includes('operation-not-supported')){try{await firebase.auth().signInWithRedirect(prov);return}catch(x){e=x}}
+   if(c.includes('popup-closed')||c.includes('cancelled-popup')){b.disabled=false;return}
+   toast(c.includes('operation-not-allowed')||c.includes('unauthorized-domain')?'O login com Google ainda não foi ativado no Firebase.':authErr(e));b.disabled=false;return}
+  const u=firebase.auth().currentUser;if(u&&!DONOS.includes(String(u.email).toLowerCase())){toast('Esta conta do Google não tem acesso. Use a senha da equipe.');await firebase.auth().signOut();return}
+  unlock();st.role='admin';st.aview='bal';st.bal.key=null;render()},
  setupok:async b=>{const a1=vv('sa1'),a2=vv('sa2'),e1=vv('se1'),e2=vv('se2');
   if(a1.length<6||(e1&&e1.length<6))return toast('As senhas precisam de pelo menos 6 caracteres.');if(a1!==a2||e1!==e2)return toast('As senhas repetidas não conferem.');if(e1&&a1===e1)return toast('Use senhas diferentes para administrador e equipe.');
   b.disabled=true;const A=aux().auth();
@@ -833,6 +842,7 @@ render();
 try{if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
 (async()=>{let db=null;const cfg=window.FIREBASE_CONFIG;if(cfg&&cfg.apiKey&&window.firebase){try{firebase.initializeApp(cfg);db=firebase.firestore();try{db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}}catch(e){db=null}}
  if(db&&window.AUTH_ON&&firebase.auth){AUTH.on=true;let uidAtual;
+  try{firebase.auth().getRedirectResult().then(r=>{if(r&&r.user&&!DONOS.includes(String(r.user.email).toLowerCase())){toast('Esta conta do Google não tem acesso.');firebase.auth().signOut()}}).catch(()=>{})}catch(e){}
   firebase.auth().onAuthStateChanged(u=>{const antes=uidAtual;uidAtual=u?u.uid:null;AUTH.user=u;AUTH.ready=true;
    if(!u&&antes){location.reload();return}
    if(u&&D.mode!=='remote')startRemote(db);render()});
