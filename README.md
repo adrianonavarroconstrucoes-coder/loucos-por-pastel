@@ -1,5 +1,9 @@
 # Loucos por Pastel · Comanda digital
 
+- App da loja: https://loucosporpastel.github.io/
+- Pedido do cliente: https://loucosporpastel.github.io/pedido/
+- Tutorial: https://loucosporpastel.github.io/tutorial/
+
 App de cardápio e comanda (garçom + cozinha) do Loucos por Pastel Trailer.
 
 ## Arquivos
