@@ -101,6 +101,8 @@ const telFmt=t=>{t=so(t);return t.length===11?`(${t.slice(0,2)}) ${t.slice(2,3)}
 const LS={get(k,d){try{const v=localStorage.getItem('lppc-'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('lppc-'+k,JSON.stringify(v))}catch(e){}}};
 const FORMAS=['Pix','Dinheiro','Cartão de crédito','Cartão de débito'];
 const TIPOS_P=[['entrega','Entrega'],['retirada','Retirar no balcão'],['local','Comer no local']];
+const entregaLiberada=()=>entregaOk(H());
+const avisoEntrega=()=>{const e=H().semEntrega||{};return`<div class="card" style="border-color:var(--red);background:light-dark(#fdeee8,#2a1712)"><b style="color:var(--red)">🛵 Entrega indisponível ${e.d==='sempre'?'no momento':'hoje'}</b><p class="note" style="margin:4px 0 0">${e.msg?esc(e.msg)+'. ':''}Você pode retirar no balcão ou comer aqui na loja.</p></div>`};
 const PASSOS={entrega:[['novo','Pedido enviado'],['producao','Em produção'],['saiu','Saiu para entrega'],['concluido','Entregue']],retirada:[['novo','Pedido enviado'],['producao','Em produção'],['pronto','Pronto para retirar'],['concluido','Retirado']],local:[['novo','Pedido enviado'],['producao','Em produção'],['pronto','Pronto no balcão'],['concluido','Concluído']]};
 const FALA={producao:'Seu pedido foi aceito e está em produção.',pronto:'Seu pedido está pronto.',saiu:'Seu pedido saiu para entrega.',recusado:'Seu pedido não foi aceito.'};
 const st={v:'tel',tel:'',cli:null,cart:[],cat:null,tipo:'entrega',hora:'',forma:'',troco:'',semTroco:false,obs:'',trocaEnd:false,end2:{rua:'',num:'',bairro:'',comp:''},salvarEnd:true,sheet:null,ped:null,o:null,H:null,erro:{}};
@@ -140,7 +142,7 @@ function nCart(){return st.cart.reduce((s,c)=>s+c.q,0)}
 function subtotal(){return r2(st.cart.reduce((s,c)=>s+c.q*linePrice(c),0))}
 function vMenu(){const S=status(),cats=MENU.filter(c=>c.itens.length);if(!st.cat&&cats[0])st.cat=cats[0].id;
  const at=(st.cli.ativos||[]);
- return`${S.aberto?'':vFechado(S)}${st.o&&!['concluido','recusado'].includes(st.o.st)?`<button class="btn g w" data-a="verped" style="margin-bottom:10px">Acompanhar meu pedido · ${esc(({novo:'aguardando a loja',producao:'em produção',pronto:'pronto',saiu:'saiu para entrega'})[st.o.st]||'')}</button>`:''}
+ return`${S.aberto?'':vFechado(S)}${S.aberto&&!entregaLiberada()?avisoEntrega():''}${st.o&&!['concluido','recusado'].includes(st.o.st)?`<button class="btn g w" data-a="verped" style="margin-bottom:10px">Acompanhar meu pedido · ${esc(({novo:'aguardando a loja',producao:'em produção',pronto:'pronto',saiu:'saiu para entrega'})[st.o.st]||'')}</button>`:''}
  <nav class="cats">${cats.map(c=>`<button class="${st.cat===c.id?'on':''}" data-a="cat" data-v="${c.id}">${esc(c.nome)}</button>`).join('')}</nav>
  ${cats.map(c=>`<section id="c-${c.id}"><div class="sec"><span class="brush${c.bev?' k':''}">${esc(c.nome)}</span>${c.tag?`<span class="tag">${esc(c.tag)}</span>`:''}</div>
  ${c.img&&IMG[c.img]?`<img class="hero-img" src="${IMG[c.img]}" alt="">`:''}
@@ -148,12 +150,12 @@ function vMenu(){const S=status(),cats=MENU.filter(c=>c.itens.length);if(!st.cat
  ${it.off?'':`<div class="step">${n?`<button class="m" data-a="menos" data-v="${it.id}" aria-label="Tirar um ${esc(it.n)}">−</button><b>${n}</b>`:''}<button data-a="mais" data-v="${it.id}" aria-label="Adicionar ${esc(it.n)}">+</button></div>`}</div>`}).join('')}</div>${c.warn?`<div class="warn">${esc(c.warn)}</div>`:''}</section>`).join('')}
  <p class="note" style="text-align:center;margin-top:20px">Não é ${esc(st.cli.nome.split(' ')[0])}? <button class="link" data-a="sair">Trocar número</button></p>`}
 function endAtual(){return st.trocaEnd?st.end2:st.cli.end}
-function vCheck(){const S=status(),sub=subtotal(),taxa=st.tipo==='entrega'?TAXA_ENTREGA:0,e=st.cli.end;
+function vCheck(){if(st.tipo==='entrega'&&!entregaLiberada())st.tipo='retirada';const S=status(),sub=subtotal(),taxa=st.tipo==='entrega'?TAXA_ENTREGA:0,e=st.cli.end;
  if(!st.cart.length)return`<h1>Sua sacola</h1><p class="mut">Sua sacola está vazia.</p><button class="btn k w" data-a="voltar">Ver cardápio</button>`;
  return`<button class="link" data-a="voltar">← Continuar escolhendo</button><h1>Sua sacola</h1>
  <div class="card">${st.cart.map((c,i)=>{const I=ITEM[c.id];return`<div class="ln"><div class="d"><b>${esc(I.n)}</b>${c.ad&&c.ad.length?`<span class="adl">${esc(adTxt(c.ad))}</span>`:''}${c.o?`<span class="adl" style="color:var(--mut)">${esc(c.o)}</span>`:''}${I.adic?`<button class="link" style="padding:2px 0;font-size:14px" data-a="cad2" data-i="${i}">${c.ad&&c.ad.length?'Mudar adicionais':'+ Adicionais'}</button>`:''}
   <input type="text" data-obs="${i}" value="${esc(c.obs||'')}" placeholder="Observação (ex.: sem cebola)" maxlength="80"></div><div style="text-align:right"><div class="money">${brl(linePrice(c)*c.q)}</div><div class="step" style="margin-top:6px"><button class="m" data-a="cm" data-i="${i}" aria-label="Menos" style="background:var(--line);color:var(--ink)">−</button><b>${c.q}</b><button data-a="cp" data-i="${i}" aria-label="Mais">+</button></div></div></div>`}).join('')}</div>
- <h2 style="margin-top:18px">Como você quer?</h2><div class="tipo" style="margin-top:8px">${TIPOS_P.map(([v,l])=>`<button class="${st.tipo===v?'on':''}" data-a="tipo" data-v="${v}">${l}</button>`).join('')}</div>
+ <h2 style="margin-top:18px">Como você quer?</h2><div class="tipo" style="margin-top:8px">${TIPOS_P.map(([v,l])=>{const off=v==='entrega'&&!entregaLiberada();return`<button class="${st.tipo===v?'on':''}" data-a="tipo" data-v="${v}" ${off?'disabled style="opacity:.4;text-decoration:line-through"':''}>${off?'Entrega indisponível':l}</button>`}).join('')}</div>${entregaLiberada()?'':avisoEntrega()}
  ${st.tipo==='entrega'?`<div class="card"><b>Entregar em</b>${st.trocaEnd?campoEnd(st.end2,'e')+`<label class="chk"><input type="checkbox" id="salvarEnd" ${st.salvarEnd?'checked':''}> Salvar como meu endereço</label><button class="link" data-a="endvolta">Usar o endereço do cadastro</button>`:`<p style="margin:6px 0">${esc(e.rua)}, ${esc(e.num)}${e.comp?' · '+esc(e.comp):''}<br>${esc(e.bairro)}</p><button class="link" data-a="endtroca">Entregar em outro endereço</button>`}<p class="note" style="margin:6px 0 0">Taxa de entrega: ${brl(TAXA_ENTREGA)}</p></div>`
  :`<div class="card"><label class="field" style="margin-top:0">${st.tipo==='local'?'Que horas você vai chegar para comer?':'Que horas você vem retirar?'}<input type="time" id="hora" value="${esc(st.hora)}" data-keep></label><p class="note" style="margin:6px 0 0">Endereço da loja: confirme pelo WhatsApp (14) 9 9155-8179.</p></div>`}
  <h2 style="margin-top:18px">Como vai pagar?</h2><p class="note" style="margin:2px 0 0">O pagamento é feito ${st.tipo==='entrega'?'na entrega':'na loja'}. Aqui você só nos avisa a forma.</p>
@@ -216,6 +218,7 @@ async function cadastrar(){const nome=($('#nome')?.value||'').trim(),e=lerEnd('c
 async function enviar(b){const S=status();st.erro={};
  if(!S.aberto){st.erro={check:'A loja está fechada agora.'};return render()}
  if(!st.cart.length)return;
+ if(st.tipo==='entrega'&&!entregaLiberada()){st.erro={check:'A entrega está indisponível agora. Escolha retirar no balcão ou comer no local.'};st.tipo='retirada';return render()}
  let end=null;if(st.tipo==='entrega'){if(st.trocaEnd){st.end2=lerEnd('e');if(!endOk(st.end2)){st.erro={check:'Preencha rua, número e bairro da entrega.'};return render()}end=st.end2;st.salvarEnd=!!$('#salvarEnd')?.checked}else end=st.cli.end}
  else{st.hora=$('#hora')?.value||st.hora;if(!st.hora){st.erro={check:st.tipo==='local'?'Informe que horas vai chegar.':'Informe que horas vem retirar.'};return render()}}
  if(!st.forma){st.erro={check:'Escolha a forma de pagamento.'};return render()}

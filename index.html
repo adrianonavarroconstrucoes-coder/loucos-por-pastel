@@ -122,7 +122,8 @@ input[type=text],input[type=search],input[type=number],input[type=password]{heig
 @keyframes pulsa{50%{box-shadow:0 0 0 6px rgba(43,154,72,.35)}}
 @media(prefers-reduced-motion:reduce){.tk.on.novo{animation:none}}
 .oc{padding:8px 14px 0;font-size:15px;line-height:1.45}.oc.tot{display:flex;justify-content:space-between;padding-bottom:4px;font-size:16px}
-.hr{margin-top:8px}.hr input[type=time],.hr input[type=date]{height:40px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);padding:0 6px;font-size:15px}
+.hr{margin-top:8px}.hr input[type=time]{width:104px}.hr .mini.chk{min-width:96px!important}
+.hr input[type=time],.hr input[type=date]{height:40px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);padding:0 6px;font-size:15px}
 .hr input:disabled{opacity:.4}
 .adbtn{margin-top:6px;min-height:34px;padding:0 12px;border-radius:99px;border:1.5px solid var(--y);background:transparent;color:var(--y);font-weight:600;font-size:14px;cursor:pointer}
 .cl .adbtn{color:var(--gold);border-color:var(--gold);display:block}
@@ -733,14 +734,20 @@ function vLojaOnline(){const H=hdraft(),S=lojaStatus(horario()),link=location.hr
  return`<div class="card center"><div class="mut">Agora o link dos clientes mostra</div><div class="big-n" style="color:${S.aberto?'#2b9a48':'var(--red)'}">${S.aberto?'Aberto':'Fechado'}</div><div class="mut">${S.aberto?'até '+horaTxt(S.ate):S.pausa?'Pedidos pausados':'Próxima abertura: '+proxTxt(S.prox)}</div></div>
  <div class="card"><b>Link para os clientes</b><p class="note" style="word-break:break-all">${esc(link)}</p><button class="btn k w" data-a="copylink" data-v="${esc(link)}">Copiar mensagem com o link</button></div>
  <div class="card"><b>Pausar pedidos online</b><p class="note">Fecha o link na hora, mesmo dentro do horário (ex.: cozinha lotada).</p><label class="mini chk" style="font-size:16px"><input type="checkbox" data-hd="pausa" ${H.pausa?'checked':''}> Pedidos pausados</label><input type="text" data-hd="msgPausa" value="${esc(H.msgPausa||'')}" placeholder="Recado opcional (ex.: voltamos em 30 min)" style="margin-top:8px"></div>
+ <div class="card"><b>Entrega</b><p class="note">Use quando houver problema com o entregador. Os clientes continuam podendo retirar no balcão ou comer no local.</p>${(()=>{const e=H.semEntrega||{};const off=!!e.d;return`<label class="mini chk" style="font-size:16px"><input type="checkbox" data-hd="eoff" ${off?'checked':''}> Entrega indisponível</label>
+ <div class="opts" style="${off?'':'opacity:.45;pointer-events:none'}" id="emodo"><button class="${e.d!=='sempre'?'on':''}" data-a="emodo" data-v="hoje">Só hoje</button><button class="${e.d==='sempre'?'on':''}" data-a="emodo" data-v="sempre">Até eu reativar</button></div>
+ <input type="text" data-hd="emsg" value="${esc(e.msg||'')}" placeholder="Recado opcional (ex.: entregador doente)">`})()}${entregaOk(horario())?'':`<p class="note" style="color:var(--red);font-weight:600">Agora: entrega desligada no link dos clientes.</p>`}</div>
  <div class="card ed"><b>Horário da semana</b>${H.sem.map((d,i)=>`<div class="row hr"><label class="mini chk" style="min-width:118px"><input type="checkbox" data-hd="on.${i}" ${d.on?'checked':''}> ${DIAS[i]}</label><input type="time" data-hd="a.${i}" value="${d.a}" ${d.on?'':'disabled'} aria-label="Abre ${DIAS[i]}"><span class="mut">às</span><input type="time" data-hd="f.${i}" value="${d.f}" ${d.on?'':'disabled'} aria-label="Fecha ${DIAS[i]}"></div>`).join('')}<p class="note">Se fechar depois da meia-noite, coloque o horário do dia seguinte (ex.: 18:00 às 01:00).</p></div>
  <div class="card ed"><b>Dias sem abrir</b><p class="note">Feriados, folgas e viagens. O link mostra o recado e a próxima abertura.</p>${(H.fechados||[]).map((f,i)=>`<div class="row hr"><input type="date" data-hd="fd.${i}" value="${f.d}"><input type="text" data-hd="fm.${i}" value="${esc(f.msg||'')}" placeholder="Recado (ex.: Feriado)"><button class="x" data-a="hfdel" data-i="${i}" aria-label="Remover">✕</button></div>`).join('')}<button class="btn o w" data-a="hfadd" style="margin-top:8px">+ Marcar dia fechado</button></div>
  <button class="btn p w" data-a="hsalvar" ${st.hdirty?'':'disabled'}>Salvar horários</button>`}
 function hdInput(t){const H=hdraft(),[k,i]=t.dataset.hd.split('.');
- if(k==='pausa')H.pausa=t.checked;else if(k==='msgPausa')H.msgPausa=t.value;else if(k==='on'){H.sem[+i].on=t.checked;t.closest('.row').querySelectorAll('input[type=time]').forEach(x=>x.disabled=!t.checked)}
+ if(k==='eoff'){H.semEntrega=t.checked?{d:hoje(),msg:(H.semEntrega&&H.semEntrega.msg)||''}:null;const m=document.getElementById('emodo');if(m){m.style.opacity=t.checked?'':'.45';m.style.pointerEvents=t.checked?'':'none';m.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v==='hoje'))}}
+ else if(k==='emsg'){if(H.semEntrega)H.semEntrega.msg=t.value}
+ else if(k==='pausa')H.pausa=t.checked;else if(k==='msgPausa')H.msgPausa=t.value;else if(k==='on'){H.sem[+i].on=t.checked;t.closest('.row').querySelectorAll('input[type=time]').forEach(x=>x.disabled=!t.checked)}
  else if(k==='a'||k==='f')H.sem[+i][k]=t.value;else if(k==='fd')H.fechados[+i].d=t.value;else if(k==='fm')H.fechados[+i].msg=t.value;
  st.hdirty=true;const b=document.querySelector('[data-a=hsalvar]');if(b)b.disabled=false}
 Object.assign(ADM,{
+ emodo:(b,v)=>{const H=hdraft();if(!H.semEntrega)return;H.semEntrega.d=v==='sempre'?'sempre':hoje();st.hdirty=true;render()},
  hfadd:()=>{const H=hdraft();(H.fechados=H.fechados||[]).push({d:hoje(),msg:''});st.hdirty=true;render()},
  hfdel:b=>{hdraft().fechados.splice(+b.dataset.i,1);st.hdirty=true;render()},
  hsalvar:async()=>{const H=hdraft();for(const d of H.sem)if(d.on&&(!d.a||!d.f))return toast('Preencha os horários dos dias abertos.');H.fechados=(H.fechados||[]).filter(f=>f.d).sort((a,b)=>a.d<b.d?-1:1);

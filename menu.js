@@ -45,3 +45,5 @@ function lojaStatus(H,agora){H=H||DEF_HORARIO;const now=agora||new Date(),t=now.
  return{aberto,ate,prox,hoje,msg:hoje&&hoje.msg||''};
 }
 function proxTxt(p){if(!p)return'em breve';const dia=p.k===0?'hoje':p.k===1?'amanhã':DIAS[p.d.getDay()].toLowerCase()+', '+_p2(p.d.getDate())+'/'+_p2(p.d.getMonth()+1);return dia+' às '+horaTxt(p.a)}
+/* entrega indisponível (problema com entregador): {d:'AAAA-MM-DD' só nesse dia | 'sempre' até reativar, msg} */
+function entregaOk(H,agora){const e=H&&H.semEntrega;if(!e||!e.d)return true;if(e.d==='sempre')return false;return e.d!==ymdL(agora||new Date())}
