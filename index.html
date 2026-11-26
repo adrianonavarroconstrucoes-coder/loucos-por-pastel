@@ -634,7 +634,7 @@ function vLogin(){
 }
 function pw(id,l){return`<label class="field">${l}<input type="password" id="${id}" data-keep autocomplete="new-password"></label>`}
 function authSheet(s){
- if(s.t==='setup')return`<h2>Criar as senhas</h2><p class="mut">Feito uma única vez, pelo dono. Mínimo de 6 caracteres.</p>${pw('sa1','Senha do administrador')}${pw('sa2','Repita a senha do administrador')}${pw('se1','Senha da equipe (garçom e cozinha)')}${pw('se2','Repita a senha da equipe')}<button class="btn p w" data-a="setupok" style="margin-top:14px">Criar senhas</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
+ if(s.t==='setup')return`<h2>Criar as senhas</h2><p class="mut">Feito pelo dono. Mínimo de 6 caracteres. Se for só recriar a senha do administrador, deixe a da equipe em branco.</p>${pw('sa1','Senha do administrador')}${pw('sa2','Repita a senha do administrador')}${pw('se1','Senha da equipe (deixe em branco se já existe)')}${pw('se2','Repita a senha da equipe')}<button class="btn p w" data-a="setupok" style="margin-top:14px">Criar senhas</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  if(s.t==='alogin')return`<h2>Área do administrador</h2>${pw('asenha','Senha do administrador')}<button class="btn p w" data-a="aloginok" style="margin-top:14px">Entrar</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  if(s.t==='pwtroca')return`<h2>Trocar senha ${s.quem==='admin'?'do administrador':'da equipe'}</h2>${pw('pa','Senha atual '+(s.quem==='admin'?'do administrador':'da equipe'))}${pw('pn1','Nova senha')}${pw('pn2','Repita a nova senha')}<button class="btn p w" data-a="pwok" style="margin-top:14px">Salvar nova senha</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  return'';
@@ -646,9 +646,10 @@ Object.assign(ADM,{
   try{await firebase.auth().signInWithEmailAndPassword(EM[st.lt||'equipe'],p);unlock();if((st.lt||'equipe')==='admin'){st.role='admin';st.aview='bal';st.bal.key=null}}catch(e){toast(authErr(e));b.disabled=false}},
  setup:()=>{st.sheet={t:'setup'};renderSheet()},
  setupok:async b=>{const a1=vv('sa1'),a2=vv('sa2'),e1=vv('se1'),e2=vv('se2');
-  if(a1.length<6||e1.length<6)return toast('As senhas precisam de pelo menos 6 caracteres.');if(a1!==a2||e1!==e2)return toast('As senhas repetidas não conferem.');if(a1===e1)return toast('Use senhas diferentes para administrador e equipe.');
+  if(a1.length<6||(e1&&e1.length<6))return toast('As senhas precisam de pelo menos 6 caracteres.');if(a1!==a2||e1!==e2)return toast('As senhas repetidas não conferem.');if(e1&&a1===e1)return toast('Use senhas diferentes para administrador e equipe.');
   b.disabled=true;const A=aux().auth();
-  try{await A.createUserWithEmailAndPassword(EM.admin,a1);await A.signOut();await A.createUserWithEmailAndPassword(EM.equipe,e1);await A.signOut();
+  try{await A.createUserWithEmailAndPassword(EM.admin,a1);await A.signOut();
+   if(e1){try{await A.createUserWithEmailAndPassword(EM.equipe,e1);await A.signOut()}catch(x){try{await A.signOut()}catch(y){}if(!String(x&&x.code).includes('email-already-in-use'))throw x;toast('A equipe já tinha senha; ela continua a mesma.')}}
    await firebase.auth().signInWithEmailAndPassword(EM.admin,a1);st.sheet=null;st.role='admin';st.aview='bal';st.bal.key=null;toast('Senhas criadas. Guarde-as em lugar seguro.')}catch(e){try{await A.signOut()}catch(x){}toast(authErr(e));b.disabled=false}},
  aloginok:async b=>{const p=vv('asenha');if(!p)return;b.disabled=true;try{await firebase.auth().signInWithEmailAndPassword(EM.admin,p);st.sheet=null;st.role='admin';st.aview='bal';st.bal.key=null;unlock();render()}catch(e){toast(authErr(e));b.disabled=false}},
  pwtroca:(b,v)=>{st.sheet={t:'pwtroca',quem:v};renderSheet()},
