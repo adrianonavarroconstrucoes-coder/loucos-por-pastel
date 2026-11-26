@@ -81,7 +81,7 @@ input[type=text],input[type=search],input[type=number],input[type=password]{heig
 .btn.k{background:var(--k);color:var(--y)}
 .btn.y{background:var(--y);color:var(--k);box-shadow:0 4px 0 #a87a00}
 .btn.g{background:var(--ok);color:#fff}
-.btn.o{border:2px solid var(--line);background:var(--card)}
+.btn.o{border:2px solid var(--line);background:var(--card);color:var(--ink)}
 .btn.w{width:100%}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .ready{background:var(--ok);color:#fff;border-radius:16px;padding:12px 14px;margin-bottom:14px}
@@ -443,6 +443,13 @@ function renderSheet(){
   <p class="note">Bebidas não vão para a tela da cozinha; o garçom leva direto.</p>
   <button class="btn p w" data-a="enviar" style="margin-top:10px">Enviar para a cozinha</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Continuar escolhendo</button>`}
  if(AUTH.on&&['setup','alogin','pwtroca'].includes(s.t))h=authSheet(s);
+ if(s.t==='onwa'){const o=D.data.online[s.k];if(o){const n=(o.cli.nome||'').split(' ')[0];
+  h=`${s.aviso?`<p style="background:#e3f4e8;color:#16632b;border-radius:12px;padding:10px 12px;font-weight:600;margin:0 0 12px">✓ ${esc(s.aviso)}</p>`:''}<h2>WhatsApp de ${esc(o.cli.nome)}</h2><p class="mut" style="margin:4px 0 12px">${telFmt(o.cli.tel)}</p>
+  <a class="btn g w" style="text-decoration:none" href="${waLink(o,waMsg(o))}" target="_blank" rel="noopener">${s.aviso?'Avisar o cliente no WhatsApp':'Enviar aviso do status'}</a>
+  <p class="note" style="margin:6px 0 12px">Mensagem pronta: “${esc(waMsg(o))}”</p>
+  <a class="btn o w" style="text-decoration:none;margin-top:4px" href="${waLink(o,'Olá, '+n+'! Aqui é da Loucos por Pastel, sobre o seu pedido: ')}" target="_blank" rel="noopener">Conversar sobre uma intercorrência</a>
+  <a class="btn o w" style="text-decoration:none;margin-top:8px" href="tel:+55${o.cli.tel}">Ligar para o cliente</a>
+  <button class="btn k w" data-a="fechar" style="margin-top:8px">Fechar</button>`}}
  if(s.t==='onrec')h=`<h2>Recusar pedido?</h2><p class="mut">Escolha o motivo que o cliente vai ver:</p><div class="opts" style="flex-direction:column">${['Item esgotado','Fora da área de entrega','Cozinha lotada no momento','Loja fechando',''].map(m=>`<button data-a="onrecok" data-v="${m}" style="text-align:left">${m||'Sem motivo'}</button>`).join('')}</div><button class="btn o w" data-a="fechar" style="margin-top:8px">Voltar</button>`;
  if(s.t==='limpar')h=`<h2>Apagar todos os pedidos e vendas?</h2><p>Isso apaga de forma definitiva os pedidos, as mesas abertas, os pagamentos e todo o histórico do balanço. Não dá para desfazer.</p><label class="field">Digite APAGAR para confirmar<input type="text" id="lconf" data-keep autocomplete="off" autocapitalize="characters"></label><button class="btn p w" data-a="limparok" style="margin-top:14px">Apagar tudo</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
  if(s.t==='pin')h=`<h2>${s.modo==='entrar'?'Área do administrador':s.modo==='trocar'?'Novo PIN':'Criar PIN do administrador'}</h2>${s.modo==='criar'?'<p class="mut">Primeiro acesso: escolha um PIN de 4 a 8 números. Ele será pedido sempre que entrar aqui.</p>':''}<label class="field">${s.modo==='entrar'?'PIN':'Novo PIN'}<input type="password" inputmode="numeric" id="pin1" data-keep maxlength="8" autocomplete="off"></label>${s.modo!=='entrar'?'<label class="field">Repita o PIN<input type="password" inputmode="numeric" id="pin2" data-keep maxlength="8" autocomplete="off"></label>':''}<button class="btn p w" data-a="pinok" style="margin-top:14px">${s.modo==='entrar'?'Entrar':'Salvar PIN'}</button><button class="btn o w" data-a="fechar" style="margin-top:8px">Cancelar</button>`;
@@ -701,7 +708,7 @@ function cardOnline(k,o,quem){
  return`<article class="tk on ${o.st}"><header><b>ONLINE · ${esc(TIPO_TXT[o.tipo]||'')}</b><span>${hm(o.em)} · há ${min} min<br>${esc(ON_ST[o.st])}</span></header>
  <div class="oc"><b>${esc(o.cli.nome)}</b> · ${telFmt(o.cli.tel)}<br>${o.tipo==='entrega'?'📍 '+esc(endTxt(o.end||o.cli.end)):'🕒 '+(o.tipo==='local'?'Chega às ':'Retira às ')+esc(o.hora||'')}<br>💳 ${esc(pagTxt(o))}${o.obs?`<br>⚠ ${esc(o.obs)}`:''}</div>
  <ul>${itens}</ul><div class="oc tot"><span>Total${o.taxa?` (inclui entrega ${brl(o.taxa)})`:''}</span><b class="money">${brl(o.total)}</b></div>
- <footer style="flex-wrap:wrap">${bt}<a class="btn o" href="${waLink(o,waMsg(o))}" target="_blank" rel="noopener" style="text-decoration:none">WhatsApp</a></footer></article>`;
+ <footer style="flex-wrap:wrap">${bt}<button class="btn o" data-a="onwa" data-k="${k}" style="color:#1f8f4c;border-color:#1f8f4c">💬 WhatsApp</button></footer></article>`;
 }
 function vOnlineCozinha(){const at=onlineAtivos().filter(([,o])=>['novo','producao','pronto'].includes(o.st));if(!at.length)return'';
  return`<div class="bar"><span class="brush" style="background:#2b9a48">Pedidos online</span><span class="mut">${at.filter(x=>x[1].st==='novo').length} aguardando aceite</span></div><div class="kgrid" style="margin-bottom:22px">${at.map(([k,o])=>cardOnline(k,o,'cozinha')).join('')}</div>`}
@@ -722,9 +729,11 @@ async function concluirOnline(k){const o=D.data.online[k];if(!o)return;
  await put('fechamentos',uid(),{canal:'online',mesa:'online',nome:'Online · '+o.cli.nome,base:o.total,serv:0,consumo:o.total,taxa:o.taxa||0,formas:{[forma]:o.total},itens:Object.values(ag),dia:hoje(),em:Date.now()});
  await put('online',k,{...o,st:'concluido',fim:Date.now()});toast('Pedido de '+o.cli.nome+' concluído e lançado no caixa.')}
 Object.assign(ADM,{
- onst:async(b,v)=>{const k=b.dataset.k,o=D.data.online[k];if(!o)return;await put('online',k,{...o,st:v,[v]:Date.now()});toast({producao:'Pedido aceito. O cliente foi avisado.',pronto:'Cliente avisado: pedido pronto.',saiu:'Cliente avisado: saiu para entrega.'}[v]||'Atualizado.')},
+ onst:async(b,v)=>{const k=b.dataset.k,o=D.data.online[k];if(!o)return;await put('online',k,{...o,st:v,[v]:Date.now()});
+  st.sheet={t:'onwa',k,aviso:{producao:'Pedido aceito. A tela do cliente já mostra "em produção".',pronto:'Pedido pronto. A tela do cliente já foi atualizada.',saiu:'Saiu para entrega. A tela do cliente já foi atualizada.'}[v]||'Atualizado.'};renderSheet()},
+ onwa:b=>{st.sheet={t:'onwa',k:b.dataset.k};renderSheet()},
  onrec:b=>{st.sheet={t:'onrec',k:b.dataset.k};renderSheet()},
- onrecok:async(b,v)=>{const k=st.sheet.k,o=D.data.online[k];st.sheet=null;renderSheet();if(!o)return;await put('online',k,{...o,st:'recusado',motivo:v||'',recusado:Date.now()});toast('Pedido recusado. O cliente foi avisado.')},
+ onrecok:async(b,v)=>{const k=st.sheet.k,o=D.data.online[k];st.sheet=null;renderSheet();if(!o)return;await put('online',k,{...o,st:'recusado',motivo:v||'',recusado:Date.now()});st.sheet={t:'onwa',k,aviso:'Pedido recusado. A tela do cliente já mostra o motivo.'};renderSheet()},
  onconc:b=>{const k=b.dataset.k,o=D.data.online[k];confirmar('Concluir o pedido de '+o.cli.nome+'?','Confirma que foi entregue e pago ('+pagTxt(o)+'). O valor de '+brl(o.total)+' entra no caixa.','Concluir',()=>concluirOnline(k))},
  somok:()=>{st.somOk=true;unlock();try{const u=new SpeechSynthesisUtterance('Som ativado');u.lang='pt-BR';speechSynthesis.speak(u)}catch(e){beep([880])}manterTela();render()},
 });

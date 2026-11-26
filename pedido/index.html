@@ -111,7 +111,10 @@ let db=null,unsubPed=null,lastSt=null;
 /* ---------- avisos ---------- */
 let tt=null;function toast(m){document.querySelectorAll('.toast').forEach(x=>x.remove());const l=document.createElement('div');l.className='toast';l.textContent=m;document.body.appendChild(l);clearTimeout(tt);tt=setTimeout(()=>l.remove(),3500)}
 let actx=null;function beep(seq){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();let t=actx.currentTime;seq.forEach(f=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(.2,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.32);t+=.34})}catch(e){}}
-function falar(txt){try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}try{const S=window.speechSynthesis;if(!S)return beep([660,880]);const vs=S.getVoices().filter(v=>/^pt/i.test(v.lang));S.cancel();const u=new SpeechSynthesisUtterance(txt);const v=vs.find(x=>/pt-BR/i.test(x.lang))||vs[0];if(v){u.voice=v;u.lang=v.lang}else u.lang='pt-BR';S.speak(u)}catch(e){beep([660,880])}}
+let swReg=null;try{if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('../sw.js').then(r=>swReg=r).catch(()=>{})}catch(e){}
+const podeNotif=()=>'Notification' in window;
+function notificar(txt){try{if(podeNotif()&&Notification.permission==='granted'){const op={body:txt,icon:'../icon-192.png',badge:'../icon-192.png',vibrate:[200,100,200],tag:'pedido',renotify:true};if(swReg&&swReg.showNotification)swReg.showNotification('Loucos por Pastel',op);else new Notification('Loucos por Pastel',op)}}catch(e){}}
+function falar(txt){notificar(txt);try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}try{const S=window.speechSynthesis;if(!S)return beep([660,880]);const vs=S.getVoices().filter(v=>/^pt/i.test(v.lang));S.cancel();const u=new SpeechSynthesisUtterance(txt);const v=vs.find(x=>/pt-BR/i.test(x.lang))||vs[0];if(v){u.voice=v;u.lang=v.lang}else u.lang='pt-BR';S.speak(u)}catch(e){beep([660,880])}}
 
 /* ---------- loja aberta/fechada ---------- */
 const H=()=>st.H||DEF_HORARIO;
@@ -171,10 +174,11 @@ function vStatus(){const o=st.o;if(!o)return'<p class="mut">Carregando seu pedid
  const tit={novo:'Aguardando a loja aceitar',producao:'Seu pedido está em produção',pronto:o.tipo==='retirada'?'Pronto para retirar!':'Pronto no balcão!',saiu:'Saiu para entrega!',concluido:'Pedido concluído. Bom apetite!'}[o.st]||'';
  return`<div class="big-st" style="color:${o.st==='novo'?'var(--mut)':'var(--ok)'}">${esc(tit)}</div>
  <ol class="tl">${passos.map((p,i)=>`<li class="${i<idx||o.st==='concluido'?'done':i===idx?'now':''}"><span class="dot">${i<idx||o.st==='concluido'?'✓':i+1}</span><div><b>${esc(p[1])}</b>${i===0?`<div class="note">${new Date(o.em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`:''}</div></li>`).join('')}</ol>
- ${o.st!=='concluido'?'<p class="note" style="text-align:center">Deixe esta tela aberta: avisamos com som quando o pedido mudar.</p>':''}
+ ${o.st!=='concluido'?`${podeNotif()&&Notification.permission!=='granted'&&Notification.permission!=='denied'?'<button class="btn g w" data-a="notif">🔔 Receber avisos no celular</button>':''}<p class="note" style="text-align:center">${podeNotif()&&Notification.permission==='granted'?'Avisos ativados: você recebe uma notificação quando o pedido for aceito e quando sair.':'Deixe esta tela aberta: avisamos com som quando o pedido mudar.'}</p>`:''}
  <div class="card"><b>${esc(({entrega:'Entrega',retirada:'Retirar no balcão',local:'Comer no local'})[o.tipo])}</b> · ${o.tipo==='entrega'?esc(o.end.rua+', '+o.end.num+' · '+o.end.bairro):(o.tipo==='local'?'chegada às ':'retirada às ')+esc(o.hora)}
  <div style="margin-top:8px">${o.itens.map(i=>`<div class="tot"><span>${i.q}× ${esc(i.n)}${i.ad&&i.ad.length?` <small class="mut">${esc(adTxt(i.ad))}</small>`:''}</span><span class="money">${brl(i.p*i.q)}</span></div>`).join('')}${o.taxa?`<div class="tot"><span>Entrega</span><span class="money">${brl(o.taxa)}</span></div>`:''}<div class="tot big"><span>Total</span><span class="money">${brl(o.total)}</span></div></div>
  <p class="note" style="margin:4px 0 0">Pagamento ${o.tipo==='entrega'?'na entrega':'na loja'}: ${esc(o.pag.forma)}${o.pag.forma==='Dinheiro'?(o.pag.troco?' · troco para '+brl(o.pag.troco):' · sem troco'):''}</p></div>
+ <a class="btn o w" style="text-decoration:none;color:#1f8f4c;border-color:#1f8f4c;margin-bottom:8px" href="https://wa.me/5514991558179?text=${encodeURIComponent('Olá! Sobre meu pedido feito pelo link ('+(o.cli&&o.cli.nome||'')+'): ')}" target="_blank" rel="noopener">💬 Falar com a loja no WhatsApp</a>
  <button class="btn ${o.st==='concluido'?'p':'o'} w" data-a="novo">${o.st==='concluido'?'Fazer novo pedido':'Voltar ao cardápio'}</button>`}
 
 function render(){
@@ -259,6 +263,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-a]')
  case'endtroca':st.trocaEnd=true;st.end2={rua:'',num:'',bairro:'',comp:''};break;
  case'endvolta':st.trocaEnd=false;break;
  case'enviar':await enviar(b);return;
+ case'notif':try{const r=await Notification.requestPermission();if(r==='granted'){notificar('Pronto! Avisaremos por aqui quando o pedido mudar.')}else toast('Avisos não liberados. Deixe esta tela aberta para ouvir o som.')}catch(e){}break;
  case'verped':st.v='status';window.scrollTo(0,0);break;
  case'novo':st.v='menu';window.scrollTo(0,0);break;
  }
